@@ -1,0 +1,14 @@
+from google import genai 
+
+
+client = genai.Client() # creates a new client, should read from the env
+
+response = client.models.generate_content(
+    model = 'gemini-2.5-flash',
+    contents = 'hello'
+)
+
+print(response.model_dump_json(
+exclude_none=True,
+indent=4)
+)
