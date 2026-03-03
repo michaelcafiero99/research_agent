@@ -29,18 +29,7 @@ def planner_node(state: AgentState):
     
     # The LLM returns a ResearchPlan object (thanks to Pydantic)
     plan = planner_llm.invoke(prompt)
-    print("plans:" + plan.model_dump_json())
     
     # We return a dictionary that updates the 'plan' key in our Graph State
     return {"plan": plan.tasks}
 
-if __name__ == "__main__":
-    # Mock the state for local testing
-    test_state = {"interest": "Agentic RAG patterns"}
-    
-    # Run the node
-    result = planner_node(test_state)
-    
-    # Print the structured output
-    for i, task in enumerate(result["plan"], 1):
-        print(f"{i}. [{task.source.upper()}] {task.query}\n   Rationale: {task.rationale}\n")
