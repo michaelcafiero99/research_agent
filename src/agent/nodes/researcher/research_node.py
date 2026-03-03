@@ -1,21 +1,14 @@
-from langchain_google_genai import ChatGoogleGenerativeAI
-from src.agent.state import AgentState  # Assuming this exists from earlier
+from src.agent.tools.web_search_tool import search_web
+from src.agent.state import ResearchTask
 
-research_llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0)
-
-def research_node(state: AgentState):
-
-    # access the specific research task: the Send function causes this node to NOT
-    # recieve the entire AgentState. Instead, it only recieves the payload of the Send
-
-   # research_task = state["task"]
+def research_node(state: ResearchTask):
+    # state is the Pydantic ResearchTask object from the Send() command
     query = state.query
-    source = state.source
-
-    prompt = f"Search for {query} on {source}. Rationale: {state.rationale}"
-
-    research_result = research_llm.invoke(prompt)
-    print(research_result.content)
-    return {"research_results": [research_result.content]}
     
-
+    print(f"Researching: {query}")
+    
+    # Call our new tool
+    results = search_web(query)
+    print(f"   - Found {len(results) if results else 0} results")
+    
+    return {"research_results": [{"query": state.query, "data": results}]}
