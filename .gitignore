@@ -1,32 +1,70 @@
-# Python cache
-__pycache__/
-*.pyc
-
-# Virtual environments
-.venv/
-venv/
-
-# Environment variables
-.env
-
-# System
+# --- System ---
 .DS_Store
-
+Thumbs.db
 .claude/
 
-# Python bytecode
+# --- Python / Backend (FastAPI) ---
 **/__pycache__/
-**/*.pyc
-**/*.pyo
-**/*.pyd
-
-# Virtual Environments
+**/*.py[cod]
+**/*.so
+.python-version
 .venv/
-env/
 venv/
 ENV/
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
 
-# Development tools
+# --- Node / Frontend (Next.js) ---
+node_modules/
+**/node_modules/
+.next/
+out/
+build/
+.vercel
+.turbo
+.eslintcache
+
+# --- Package Managers (Yarn/NPM) ---
+.yarn/*
+!.yarn/releases
+!.yarn/patches
+!.yarn/plugins
+!.yarnrc.yml
+.pnp.*
+yarn-error.log
+package-lock.json
+yarn.lock
+
+# --- Environment & Secrets ---
+.env
+.env*.local
+.env.example
+!.env.example
+
+# --- Testing & Tools ---
 .ipynb_checkpoints/
 .pytest_cache/
 .mypy_cache/
+.ruff_cache/
+coverage/
+.coverage
+.coverage.*
+nosetests.xml
+coverage.xml
+htmlcov/
