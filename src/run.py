@@ -32,9 +32,9 @@ def main():
             print(f"  {rank}. {paper.title}")
             print(f"     Score : {paper.weighted_score:.2f}  "
                   f"(N={paper.novelty_score:.1f}  "
-                  f"CE={paper.clinical_efficacy_score:.1f}  "
-                  f"SA={paper.source_authority_score:.1f}  "
-                  f"TS={paper.trending_signal_score:.1f})")
+                  f"EI={paper.empirical_impact_score:.1f}  "
+                  f"VA={paper.venue_authority_score:.1f}  "
+                  f"AT={paper.academic_traction_score:.1f})")
             print(f"     URL   : {paper.url}")
             print(f"     Why   : {paper.reasoning}")
             print()
