@@ -21,15 +21,25 @@ def main():
             logger.info("Plan ready — %d tasks queued", len(event["plan"]))
 
     print("\n" + "=" * 60)
-    print("RESEARCH REPORT")
+    print("RESEARCH DIGEST")
     print("=" * 60)
 
-    synthesis = final_output.get("synthesis") if final_output else None
+    digest = final_output.get("digest") if final_output else None
 
-    if synthesis:
-        print(synthesis)
+    if digest:
+        print(f"\n{len(digest)} papers ranked for your digest:\n")
+        for rank, paper in enumerate(digest, start=1):
+            print(f"  {rank}. {paper.title}")
+            print(f"     Score : {paper.weighted_score:.2f}  "
+                  f"(N={paper.novelty_score:.1f}  "
+                  f"CE={paper.clinical_efficacy_score:.1f}  "
+                  f"SA={paper.source_authority_score:.1f}  "
+                  f"TS={paper.trending_signal_score:.1f})")
+            print(f"     URL   : {paper.url}")
+            print(f"     Why   : {paper.reasoning}")
+            print()
     else:
-        logger.warning("No synthesis produced. Raw results below.")
+        logger.warning("No digest produced. Raw research results below.")
         for entry in (final_output or {}).get("research_results", []):
             print(f"\n[{entry.get('query')}]")
             for source in entry.get("data", []):
