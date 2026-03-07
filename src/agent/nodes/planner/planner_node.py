@@ -25,6 +25,9 @@ def planner_node(state: AgentState):
     Your goal: Create 3 specific, distinct search tasks to find the newest and 
     most impactful research from the last 30 days. 
     Focus on finding breakthroughs that have practical code implementations.
+
+    For the 'source' field, set exactly one task to 'semantic_scholar' for deep citation analysis.
+    Set the other tasks to 'arxiv' or 'hackernews'.
     """
     
     # The LLM returns a ResearchPlan object (thanks to Pydantic)
@@ -32,4 +35,3 @@ def planner_node(state: AgentState):
     
     # We return a dictionary that updates the 'plan' key in our Graph State
     return {"plan": plan.tasks}
-
