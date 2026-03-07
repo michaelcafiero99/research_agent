@@ -11,3 +11,22 @@ venv/
 
 # System
 .DS_Store
+
+.claude/
+
+# Python bytecode
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/*.pyd
+
+# Virtual Environments
+.venv/
+env/
+venv/
+ENV/
+
+# Development tools
+.ipynb_checkpoints/
+.pytest_cache/
+.mypy_cache/
