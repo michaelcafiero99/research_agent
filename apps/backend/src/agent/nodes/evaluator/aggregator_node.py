@@ -13,12 +13,20 @@ def aggregator_node(state: dict) -> dict:
     evaluated = state.get("evaluated_papers", [])
     logger.info("Aggregating %d evaluated papers", len(evaluated))
 
-    included = [p for p in evaluated if p.include_in_digest]
-    ranked = sorted(included, key=lambda p: p.weighted_score, reverse=True)
+    # Sort all papers by score descending
+    all_ranked = sorted(evaluated, key=lambda p: p.weighted_score, reverse=True)
+
+    # Filter for those meeting the threshold
+    digest = [p for p in all_ranked if p.include_in_digest]
+
+    # Fallback: If no papers met the threshold, include the top result
+    if not digest and all_ranked:
+        logger.info("No papers met threshold. Including top result as fallback.")
+        digest = [all_ranked[0]]
 
     logger.info(
         "%d / %d papers qualify for digest",
-        len(ranked),
+        len(digest),
         len(evaluated),
     )
-    return {"digest": ranked}
+    return {"digest": digest}

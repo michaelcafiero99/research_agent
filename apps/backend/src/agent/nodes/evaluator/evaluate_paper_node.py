@@ -18,7 +18,7 @@ _WEIGHTS = {
 }
 
 # Minimum weighted score for digest inclusion
-_DIGEST_THRESHOLD = 7.5
+_DIGEST_THRESHOLD = 5.0
 
 
 def evaluate_paper_node(state: dict) -> dict:
