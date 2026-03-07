@@ -1,37 +1,32 @@
-# this node translates an input of interested to search queries
-# we need to use pdantic .with_structured_output to force a set response schema
-# LEARN: how does with_structured_output work under the hood? 
-
 from langchain_google_genai import ChatGoogleGenerativeAI
-from src.agent.state import AgentState  # Assuming this exists from earlier
+from src.agent.state import AgentState
+from src.agent.config import settings
+from src.agent.logging_config import get_logger
 from .response_schema import ResearchPlan
 
-# Initialize Gemini
-llm = ChatGoogleGenerativeAI(model="gemini-2.5-flash", temperature=0)
+logger = get_logger(__name__)
 
-# Bind the Pydantic model to the LLM
+llm = ChatGoogleGenerativeAI(model=settings.model, temperature=settings.temperature)
 planner_llm = llm.with_structured_output(ResearchPlan)
 
-def planner_node(state: AgentState):
+
+def planner_node(state: AgentState) -> dict:
     """Takes a single interest and generates a structured research plan."""
-    
-    # Grab the interest from the graph state
-    interest = state.get("interest", "AI agents") 
-    
+    interest = state.get("interest", "AI agents")
+    logger.info("Planning research for: %s", interest)
+
     prompt = f"""
-    You are a Senior Research Architect. 
+    You are a Senior Research Architect.
     The user is interested in: {interest}
-    
-    Your goal: Create 3 specific, distinct search tasks to find the newest and 
-    most impactful research from the last 30 days. 
+
+    Your goal: Create {settings.num_tasks} specific, distinct search tasks to find the newest and
+    most impactful research from the last 30 days.
     Focus on finding breakthroughs that have practical code implementations.
 
     For the 'source' field, set exactly one task to 'semantic_scholar' for deep citation analysis.
     Set the other tasks to 'arxiv' or 'hackernews'.
     """
-    
-    # The LLM returns a ResearchPlan object (thanks to Pydantic)
+
     plan = planner_llm.invoke(prompt)
-    
-    # We return a dictionary that updates the 'plan' key in our Graph State
+    logger.info("Generated %d research tasks", len(plan.tasks))
     return {"plan": plan.tasks}

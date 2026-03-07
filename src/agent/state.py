@@ -13,4 +13,4 @@ class AgentState(TypedDict, total=False):
     plan: List[ResearchTask]
 
     research_results: Annotated[List[dict], operator.add]
-
+    synthesis: str

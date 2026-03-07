@@ -1,48 +1,42 @@
 import os
 from dotenv import load_dotenv
 from src.agent.graph import graph
+from src.agent.logging_config import get_logger
 
 load_dotenv()
 
+logger = get_logger(__name__)
+
+
 def main():
     initial_input = {"interest": "DeepSeek R1 vs Gemini 2.0 Flash"}
-    print("--- Starting Local Workflow ---\n")
+    logger.info("Starting research agent")
 
-    # We use this variable to store the final state emitted by the graph
     final_output = None
 
     for event in graph.stream(initial_input, stream_mode="values"):
-        # 'values' mode is better for final inspection because 
-        # it always gives you a snapshot of the ENTIRE state.
         final_output = event
-        
-        # Optional: Print progress updates as they happen
+
         if "plan" in event and "research_results" not in event:
-             print(f"Plan generated with {len(event['plan'])} tasks...")
+            logger.info("Plan ready — %d tasks queued", len(event["plan"]))
 
-    # --- FINAL PRINTING ---
-    print("\n" + "="*50)
-    print("FINAL RESEARCH REPORT")
-    print("="*50)
+    print("\n" + "=" * 60)
+    print("RESEARCH REPORT")
+    print("=" * 60)
 
-    # Access the aggregated list from your Reducer
-    results = final_output.get("research_results", [])
-    
-    if not results:
-        print("No research results were collected.")
-        # Debugging: Print available keys to help identify mismatches
-        print(f"DEBUG: Final State Keys: {list(final_output.keys())}")
+    synthesis = final_output.get("synthesis") if final_output else None
+
+    if synthesis:
+        print(synthesis)
     else:
-        for i, entry in enumerate(results, 1):
-            print(f"\nTASK {i}: {entry.get('query')}")
-            print("-" * 30)
+        logger.warning("No synthesis produced. Raw results below.")
+        for entry in (final_output or {}).get("research_results", []):
+            print(f"\n[{entry.get('query')}]")
             for source in entry.get("data", []):
-                print(f"• {source.get('title')}")
-                print(f"  URL: {source.get('url')}")
-                # Print a small snippet of the content
-                snippet = source.get('content', '')[:150] + "..."
-                print(f"  Snippet: {snippet}\n")
+                print(f"  • {source.get('title')} — {source.get('url')}")
 
-                
+    print("=" * 60)
+
+
 if __name__ == "__main__":
     main()

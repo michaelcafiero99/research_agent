@@ -1,29 +1,37 @@
 import os
 from tavily import TavilyClient
+from src.agent.config import settings
+from src.agent.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 tavily_client = TavilyClient(api_key=os.getenv("TAVILY_API_KEY"))
 
-def search_web(query: str):
+
+def search_web(query: str) -> list:
     try:
-        # time_range options: "d" (day), "w" (week), "m" (month), "y" (year)
-        response = tavily_client.search(query, max_results=3, search_depth="basic", time_range="w")
+        response = tavily_client.search(
+            query,
+            max_results=settings.max_results,
+            search_depth=settings.search_depth,
+            time_range="w",
+        )
         raw_results = response.get("results", [])
 
         if not raw_results:
-            print(f"No results found for: {query}")
+            logger.warning("No results found for: %s", query)
             return []
 
-        formatted = []
-        for res in raw_results:
+        return [
+            {
+                "title": res.get("title", "Untitled"),
+                "url": res.get("url", "#"),
+                "content": res.get("content", "No content found."),
+            }
+            for res in raw_results
+            if isinstance(res, dict)
+        ]
 
-            if isinstance(res, dict):
-                formatted.append({
-                    "title": res.get("title", "Untitled"),
-                    "url": res.get("url", "#"),
-                    "content": res.get("content", "No content found."),
-                })
-        return formatted
-        
     except Exception as e:
-        print(f" Tavily Error: {e}")
+        logger.error("Tavily search failed for '%s': %s", query, e)
         return []
