@@ -20,10 +20,10 @@ type Stage = StageDefinition & { status: StageStatus };
 type Paper = {
   title: string;
   url: string;
-  novelty_score: number;
-  empirical_impact_score: number;
-  venue_authority_score: number;
-  academic_traction_score: number;
+  relevance_score: number;
+  depth_score: number;
+  credibility_score: number;
+  traction_score: number;
   weighted_score: number;
   include_in_digest: boolean;
   reasoning: string;
@@ -221,10 +221,10 @@ function PaperBentoCard({ paper }: { paper: Paper }) {
 
       {/* Score metrics */}
       <div className="px-5 py-3 grid grid-cols-2 gap-x-6 gap-y-2">
-        <ScoreRow label="Novelty"  value={paper.novelty_score} />
-        <ScoreRow label="Impact"   value={paper.empirical_impact_score} />
-        <ScoreRow label="Venue"    value={paper.venue_authority_score} />
-        <ScoreRow label="Traction" value={paper.academic_traction_score} />
+        <ScoreRow label="Relevance"    value={paper.relevance_score} />
+        <ScoreRow label="Depth"        value={paper.depth_score} />
+        <ScoreRow label="Credibility"  value={paper.credibility_score} />
+        <ScoreRow label="Traction"     value={paper.traction_score} />
       </div>
 
       {/* Source citation footer */}
@@ -369,6 +369,8 @@ export function AgentConsole({ endpoint }: { endpoint: string }) {
   const [currentStatusMessage, setCurrentStatusMessage] = useState("");
   const [previousScouts, setPreviousScouts]     = useState<string[]>([]);
   const abortRef = useRef<AbortController | null>(null);
+  const lastAdvanceTimeRef = useRef<number>(0);
+  const MIN_STAGE_MS = 800;
 
   useEffect(() => {
     try {
@@ -398,21 +400,28 @@ export function AgentConsole({ endpoint }: { endpoint: string }) {
 
       abortRef.current?.abort();
       abortRef.current = new AbortController();
+      lastAdvanceTimeRef.current = Date.now();
 
       let currentStageIdx = -1;
 
       const advanceStage = (newIdx: number) => {
-        if (newIdx <= currentStageIdx) return; // never go backward or repeat
-        // Mark every stage before newIdx as done (handles skipped stages),
-        // and mark newIdx as running in a single state update.
-        setStages((p) =>
-          p.map((s, i) => {
-            if (i < newIdx)  return { ...s, status: "done" };
-            if (i === newIdx) return { ...s, status: "running" };
-            return s;
-          }),
-        );
+        if (newIdx <= currentStageIdx) return;
         currentStageIdx = newIdx;
+
+        const now = Date.now();
+        const elapsed = now - lastAdvanceTimeRef.current;
+        const delay = Math.max(0, MIN_STAGE_MS - elapsed);
+        lastAdvanceTimeRef.current = now + delay;
+
+        setTimeout(() => {
+          setStages((p) =>
+            p.map((s, i) => {
+              if (i < newIdx)  return { ...s, status: "done" };
+              if (i === newIdx) return { ...s, status: "running" };
+              return s;
+            }),
+          );
+        }, delay);
       };
 
       try {
@@ -510,6 +519,21 @@ export function AgentConsole({ endpoint }: { endpoint: string }) {
               )}
               Scout
             </button>
+
+            <AnimatePresence mode="wait">
+              {isRunning && currentStatusMessage && (
+                <motion.p
+                  key={currentStatusMessage}
+                  initial={{ opacity: 0, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -4 }}
+                  transition={{ duration: 0.2 }}
+                  className="font-mono-ui text-[10px] text-zinc-400 text-center pt-1"
+                >
+                  {currentStatusMessage}
+                </motion.p>
+              )}
+            </AnimatePresence>
           </form>
         </div>
 
@@ -573,17 +597,6 @@ export function AgentConsole({ endpoint }: { endpoint: string }) {
         </div>
       </BentoCard>
 
-      {/* ── Right Bento Card: Execution Trace ──────────────────────────── */}
-      <BentoCard className="w-56 shrink-0 flex flex-col bg-[#F9F9F9]">
-        <div className="px-5 pt-5 pb-4 border-b border-zinc-100">
-          <p className="font-mono-ui text-[9px] uppercase tracking-widest text-zinc-400">
-            Execution Trace
-          </p>
-        </div>
-        <div className="p-5 flex-1">
-          <ExecutionTrace stages={stages} currentStatusMessage={currentStatusMessage} />
-        </div>
-      </BentoCard>
     </div>
   );
 }

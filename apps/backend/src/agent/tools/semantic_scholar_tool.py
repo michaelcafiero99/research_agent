@@ -4,24 +4,31 @@ import urllib.error
 import json
 import ssl
 import time
+from datetime import datetime, timedelta
 
 def search_semantic_scholar(query: str, max_results: int = 3):
     """
     Searches Semantic Scholar for papers and returns formatted results using the raw API.
+    Only returns papers published in the last 2 months.
     """
     try:
         # Create unverified context to avoid SSL errors
         context = ssl._create_unverified_context()
-        
+
         base_url = "https://api.semanticscholar.org/graph/v1/paper/search"
-        
+
         # Define the fields we want to retrieve
-        fields = "title,url,citationCount,influentialCitationCount,tldr,year,paperId"
-        
+        fields = "title,url,citationCount,influentialCitationCount,tldr,year,paperId,publicationDate"
+
+        # Date range: last 2 months
+        end = datetime.utcnow()
+        start = end - timedelta(days=60)
+
         params = {
             "query": query,
             "limit": max_results,
-            "fields": fields
+            "fields": fields,
+            "publicationDateOrYear": f"{start.strftime('%Y-%m-%d')}:{end.strftime('%Y-%m-%d')}",
         }
         
         query_string = urllib.parse.urlencode(params)

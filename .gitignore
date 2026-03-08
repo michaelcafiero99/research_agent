@@ -41,11 +41,11 @@ build/
 .eslintcache
 
 # --- Package Managers (Yarn/NPM) ---
-.yarn/*
-!.yarn/releases
-!.yarn/patches
-!.yarn/plugins
-!.yarnrc.yml
+**/.yarn/*
+!**/.yarn/releases
+!**/.yarn/patches
+!**/.yarn/plugins
+!**/.yarnrc.yml
 .pnp.*
 yarn-error.log
 package-lock.json

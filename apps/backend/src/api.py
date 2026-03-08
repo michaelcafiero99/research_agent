@@ -1,5 +1,7 @@
 import json
 import asyncio
+from dotenv import load_dotenv, find_dotenv
+load_dotenv(find_dotenv())
 from fastapi import FastAPI, Request
 from fastapi.responses import StreamingResponse
 from fastapi.middleware.cors import CORSMiddleware

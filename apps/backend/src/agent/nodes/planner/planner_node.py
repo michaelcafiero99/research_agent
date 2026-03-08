@@ -16,15 +16,19 @@ def planner_node(state: AgentState) -> dict:
     logger.info("Planning research for: %s", interest)
 
     prompt = f"""
-    You are a Senior Research Architect.
+    You are a research curator who writes targeted search queries for different content sources.
     The user is interested in: {interest}
 
-    Your goal: Create {settings.num_tasks} specific, distinct search tasks to find the newest and
-    most impactful research from the last 30 days.
-    Focus on finding breakthroughs that have practical code implementations.
+    Your goal: Create {settings.num_tasks} specific, distinct search tasks covering the topic from
+    different angles — academic research, practitioner content, and community discussion.
 
-    For the 'source' field, set exactly one task to 'semantic_scholar' for deep citation analysis.
-    Set the other tasks to 'arxiv' or 'hackernews'.
+    Source assignment rules (use each source the stated number of times):
+    - 'arxiv': exactly 1 task — write a precise, technical academic query using field-specific terminology
+    - 'semantic_scholar': exactly 1 task — write a query focused on citations and foundational work
+    - 'twitter': exactly 1 task — write a short, conversational query (3-5 words) that reflects how
+      people discuss and debate this topic on social media
+
+    Each query must target a distinct sub-angle of the topic.
     """
 
     plan = planner_llm.invoke(prompt)

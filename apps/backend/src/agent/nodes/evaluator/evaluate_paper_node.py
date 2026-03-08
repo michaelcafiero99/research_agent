@@ -9,12 +9,20 @@ logger = get_logger(__name__)
 _llm = ChatGoogleGenerativeAI(model=settings.model, temperature=settings.temperature)
 _evaluator_llm = _llm.with_structured_output(EvaluationResult)
 
-# Weights must sum to 1.0
-_WEIGHTS = {
-    "novelty": 0.30,
-    "empirical_impact": 0.35,
-    "venue_authority": 0.20,
-    "academic_traction": 0.15,
+# Default weights (research articles)
+_WEIGHTS_DEFAULT = {
+    "relevance": 0.35,
+    "depth": 0.30,
+    "credibility": 0.20,
+    "traction": 0.15,
+}
+
+# Twitter weights — traction matters more than depth for social content
+_WEIGHTS_TWITTER = {
+    "relevance": 0.35,
+    "depth": 0.10,
+    "credibility": 0.20,
+    "traction": 0.35,
 }
 
 # Minimum weighted score for digest inclusion
@@ -22,86 +30,84 @@ _DIGEST_THRESHOLD = 5.0
 
 
 def evaluate_paper_node(state: dict) -> dict:
-    """Evaluates a single paper via LLM structured output and returns an EvaluationResult.
+    """Evaluates a single item via LLM structured output and returns an EvaluationResult.
 
-    Receives a state dict with a single "paper" key (injected by Send).
+    Receives a state dict with a "paper" key and an "interest" key (injected by Send).
     Returns {"evaluated_papers": [EvaluationResult]} so the reducer can append it
     to the shared list in the graph state.
     """
     paper = state["paper"]
+    interest = state.get("interest", "")
+    source = paper.get("source", "")
     title = paper.get("title", "Unknown")
     url = paper.get("url", "")
     content = paper.get("content", "")
 
+    weights = _WEIGHTS_TWITTER if source == "twitter" else _WEIGHTS_DEFAULT
+
     logger.info("Evaluating: %s", title)
 
-    prompt = f"""You are an expert research curator with a high bar for scientific quality. Your job is to separate genuine primary research from noise.
+    prompt = f"""You are a content curator assembling a high-quality digest on a specific topic.
+You evaluate any type of content — research papers, technical blog posts, implementations,
+industry reports, community discussions — and score it on relevance, depth, credibility, and traction.
+
+## User's research interest
+{interest}
 
 ## Item to evaluate
 Title: {title}
 URL: {url}
 Content: {content}
 
-## Scoring rules — read these carefully before scoring
+## Scoring rules
 
-**MANDATORY DISQUALIFIERS** — if ANY of these apply, ALL four scores MUST be 0:
-- The item is a news article, magazine piece, or general-interest journalism (BBC, CNN, Reuters, NYT, etc.)
-- The item is a blog post, newsletter, or opinion/commentary
-- The item is a podcast, video, or social media post
-- The item is a product announcement, press release, or marketing content
-- The item has no original data, experiments, or methodology
+**DISQUALIFY (all scores = 0) only if:**
+- The item is completely unrelated to the user's interest
+- The item is a job posting, spam, or pure sales/marketing with no informational value
 
-**SCORE EACH CRITERION 0–10 using these anchors:**
+**SCORE EACH CRITERION 0–10:**
 
-1. **Research Novelty** — Primary research with new findings, methods, or models?
-   - 9-10: Breakthrough that meaningfully advances the field
-   - 7-8: Clear novel contribution (new architecture, dataset, benchmark, proof)
-   - 5-6: Incremental improvement on prior work
-   - 3-4: Derivative or very minor contribution
-   - 1-2: No new research (survey, meta-analysis only, recap)
-   - 0: Not primary research — MANDATORY 0
+1. **Relevance** — How directly does this address the user's interest?
+   - 9-10: Core topic, exactly on point
+   - 7-8: Closely related, covers the main subject
+   - 5-6: Useful context, tangentially related
+   - 3-4: Loosely connected
+   - 0: Unrelated or disqualified
 
-2. **Empirical Impact** — Impact backed by demonstrated evidence in THIS item?
-   - 9-10: Strong quantitative results on rigorous benchmarks or real deployments
-   - 7-8: Solid results with some scope/generalizability caveats
-   - 5-6: Theoretical contributions with limited empirical validation
-   - 3-4: Weak or cherry-picked evidence
-   - 1-2: Purely anecdotal, no data
-   - 0: No research basis — MANDATORY 0
+2. **Depth** — How substantive is the content?
+   - 9-10: Deep technical or analytical content (original research, benchmarks, detailed implementation, thorough analysis)
+   - 7-8: Solid depth with real data, meaningful technical detail, or well-argued insights
+   - 5-6: Useful overview with some supporting evidence or practical examples
+   - 3-4: Shallow, surface-level, mostly opinion
+   - 0: No substantive content
 
-3. **Venue Authority** — How authoritative as a research publication?
-   - 9-10: Top-tier peer-reviewed venue (Nature, NeurIPS, ICML, ICLR, ACL, CVPR, top journals)
-   - 7-8: Reputable peer-reviewed conference or journal
-   - 5-6: arxiv preprint from known institution or credible authors
-   - 3-4: Obscure preprint, unknown authors
-   - 1-2: Technical blog, industry report, white paper
-   - 0: News outlet, general media, social platform — MANDATORY 0
+3. **Credibility** — How credible is the source?
+   - 9-10: Top-tier journal, well-known research lab, recognized expert
+   - 7-8: Reputable publication, established technical blog, known engineering team
+   - 5-6: Individual practitioner with evident expertise, credible preprint
+   - 3-4: Unknown author, uncertain background
+   - 0: Spam or actively misleading
 
-4. **Academic Traction** — Discussed/cited in research and technical communities?
-   - 9-10: Viral in research community, rapid citation growth, widely replicated
-   - 7-8: Active discussion in technical forums, Papers with Code, academic Twitter/X
-   - 5-6: Moderate niche interest
-   - 3-4: Early awareness, limited pickup
-   - 1-2: Little to no presence in research communities
-   - 0: Only in general media, no research community uptake — MANDATORY 0
-
-## Threshold
-- Set **include_in_digest = True** ONLY IF weighted_score >= {_DIGEST_THRESHOLD} AND the item is verifiably primary research.
-- When uncertain, set **include_in_digest = False**.
+4. **Traction** — Is this getting meaningful attention?
+   - 9-10: Viral in the relevant community, widely shared or cited
+   - 7-8: Strong engagement, actively discussed
+   - 5-6: Moderate interest
+   - 3-4: Limited pickup
+   - 0: No presence
 
 ## weighted_score
-Compute as: (novelty * 0.30) + (empirical_impact * 0.35) + (venue_authority * 0.20) + (academic_traction * 0.15)
+Compute as: (relevance * 0.35) + (depth * 0.30) + (credibility * 0.20) + (traction * 0.15)
 
-Be ruthlessly selective. A high-quality BBC article is still a 0 across the board."""
+Set include_in_digest = True if weighted_score >= {_DIGEST_THRESHOLD} and the item is relevant."""
 
     result: EvaluationResult = _evaluator_llm.invoke(prompt)
 
     # Recompute weighted_score deterministically to override any LLM approximation
     result.weighted_score = round(
-        result.novelty_score * _WEIGHTS["novelty"]
-        + result.empirical_impact_score * _WEIGHTS["empirical_impact"]
-        + result.venue_authority_score * _WEIGHTS["venue_authority"]
-        + result.academic_traction_score * _WEIGHTS["academic_traction"],
+        result.relevance_score * weights["relevance"]
+        + result.depth_score * weights["depth"]
+        + result.credibility_score * weights["credibility"]
+        + result.traction_score * weights["traction"],
         2,
     )
 

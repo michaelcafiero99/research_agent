@@ -19,7 +19,8 @@ def fan_out(state: AgentState):
 
 # ── Map step: one evaluate_paper_node per candidate paper ─────────────────────
 def map_papers(state: AgentState):
-    return [Send("evaluate_paper_node", {"paper": p}) for p in state.get("candidate_papers", [])]
+    interest = state.get("interest", "")
+    return [Send("evaluate_paper_node", {"paper": p, "interest": interest}) for p in state.get("candidate_papers", [])]
 
 
 # ── Nodes ─────────────────────────────────────────────────────────────────────
